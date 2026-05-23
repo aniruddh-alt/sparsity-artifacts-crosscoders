@@ -119,6 +119,8 @@ def compute_scalers(
     dataset_split: str = "train",
     lmsys_subfolder: str | None = None,
     lmsys_split: str | None = None,
+    lmsys_name: str = "lmsys-chat-1m-chat-formatted",
+    fineweb_name: str = "fineweb-1m-sample",
     latent_indices: th.Tensor | None = None,
     latent_indices_name: str = "all_latents",
     max_activations_path: Path | None = None,
@@ -240,6 +242,8 @@ def compute_scalers(
         split=dataset_split,
         lmsys_subfolder=lmsys_subfolder,
         lmsys_split=lmsys_split,
+        lmsys_name=lmsys_name,
+        fineweb_name=fineweb_name,
     )
 
     num_samples_per_dataset = num_samples // 2
@@ -529,6 +533,18 @@ if __name__ == "__main__":
         help="Split for the LMSYS dataset. If not provided, the default split will be used.",
     )
     parser.add_argument(
+        "--lmsys-name",
+        type=str,
+        default="lmsys-chat-1m-chat-formatted",
+        help="Activation-cache subfolder name for the chat dataset.",
+    )
+    parser.add_argument(
+        "--fineweb-name",
+        type=str,
+        default="fineweb-1m-sample",
+        help="Activation-cache subfolder name for the pretraining dataset.",
+    )
+    parser.add_argument(
         "--dtype",
         type=str,
         default="float32",
@@ -565,6 +581,8 @@ if __name__ == "__main__":
         dataset_split=args.dataset_split,
         lmsys_subfolder=args.lmsys_subfolder,
         lmsys_split=args.lmsys_split,
+        lmsys_name=args.lmsys_name,
+        fineweb_name=args.fineweb_name,
         latent_indices=latent_indices,
         max_activations_path=args.max_activations_path,
         batch_size=args.batch_size,

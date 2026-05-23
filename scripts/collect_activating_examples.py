@@ -399,6 +399,7 @@ def collect_activating_examples(
     only_upload: bool = False,
     test: bool = False,
     file_name: str = "examples",
+    no_upload: bool = False,
 ) -> None:
     """
     Collect and save examples that activate latent features at different quantiles.
@@ -464,7 +465,9 @@ def collect_activating_examples(
 
     # Upload to HuggingFace Hub
     repo = f"{HF_NAME}/diffing-stats-" + crosscoder
-    if not test:
+    if no_upload:
+        print(f"--no-upload set, skipping HF upload to {repo}")
+    elif not test:
         print(f"Uploading to HuggingFace Hub: {repo}")
         for ftype in ["pt", "db"]:
             name = ("test_" if test else "") + file_name
@@ -502,6 +505,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--only-upload", action="store_true")
     parser.add_argument("--test", action="store_true")
+    parser.add_argument(
+        "--no-upload",
+        action="store_true",
+        help="Skip HuggingFace Hub upload. Outputs are still saved locally.",
+    )
     parser.add_argument("--file-name", type=str, default="examples")
 
     args = parser.parse_args()
@@ -528,4 +536,5 @@ if __name__ == "__main__":
         only_upload=args.only_upload,
         test=args.test,
         file_name=args.file_name,
+        no_upload=args.no_upload,
     )

@@ -204,6 +204,8 @@ def collect_dictionary_activations(
     is_difference_sae: bool = False,
     sae_model_idx: int | None = None,
     cache_suffix: str = "",
+    lmsys_name: str = "lmsys-chat-1m-chat-formatted",
+    fineweb_name: str = "fineweb-1m-sample",
 ) -> None:
     """
     Compute and save latent activations for a given dictionary model.
@@ -260,6 +262,8 @@ def collect_dictionary_activations(
             layer=layer,
             lmsys_split=split + f"-col{lmsys_col}" if lmsys_col else split,
             split=split,
+            lmsys_name=lmsys_name,
+            fineweb_name=fineweb_name,
         )
 
         # For difference SAEs, convert to DifferenceCache
@@ -467,6 +471,18 @@ if __name__ == "__main__":
     parser.add_argument("--is-difference-sae", action="store_true")
     parser.add_argument("--sae-model-idx", type=int, default=None)
     parser.add_argument("--cache-suffix", type=str, default="")
+    parser.add_argument(
+        "--lmsys-name",
+        type=str,
+        default="lmsys-chat-1m-chat-formatted",
+        help="Activation-cache subfolder name for the chat dataset.",
+    )
+    parser.add_argument(
+        "--fineweb-name",
+        type=str,
+        default="fineweb-1m-sample",
+        help="Activation-cache subfolder name for the pretraining dataset.",
+    )
     args = parser.parse_args()
     if args.is_sae or args.is_difference_sae:
         if args.sae_model_idx is None:
@@ -499,4 +515,6 @@ if __name__ == "__main__":
         is_difference_sae=args.is_difference_sae,
         sae_model_idx=args.sae_model_idx,
         cache_suffix=args.cache_suffix,
+        lmsys_name=args.lmsys_name,
+        fineweb_name=args.fineweb_name,
     )
