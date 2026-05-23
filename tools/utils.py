@@ -84,18 +84,23 @@ def load_activation_dataset(
     base_model_lmsys = base_model_dir_lmsys / lmsys_name / lmsys_split
     instruct_model_lmsys = instruct_model_dir_lmsys / lmsys_name / lmsys_split
 
+    # Pass submodule_name explicitly so PairedActivationCache uses the new
+    # layout (tokens.pt in parent dir, activations in submodule dir).
+    # Passing the submodule-suffixed path positionally would put us in legacy
+    # mode, which looks for tokens.pt inside the submodule dir — but
+    # collect_activations.py writes it one level up.
     print(
-        f"Loading fineweb cache from {base_model_fineweb / submodule_name} and {instruct_model_fineweb / submodule_name}"
+        f"Loading fineweb cache from {base_model_fineweb} and {instruct_model_fineweb} (submodule={submodule_name})"
     )
     fineweb_cache = PairedActivationCache(
-        base_model_fineweb / submodule_name, instruct_model_fineweb / submodule_name
+        str(base_model_fineweb), str(instruct_model_fineweb), submodule_name=submodule_name
     )
     print(
-        f"Loading lmsys cache from {base_model_lmsys / submodule_name} and {instruct_model_lmsys / submodule_name}"
+        f"Loading lmsys cache from {base_model_lmsys} and {instruct_model_lmsys} (submodule={submodule_name})"
     )
 
     lmsys_cache = PairedActivationCache(
-        base_model_lmsys / submodule_name, instruct_model_lmsys / submodule_name
+        str(base_model_lmsys), str(instruct_model_lmsys), submodule_name=submodule_name
     )
 
     return fineweb_cache, lmsys_cache
