@@ -54,13 +54,24 @@ with open(
     template_path / "customizable_gemma_chat_template_ctrl_tokens.jinja", "r"
 ) as f:
     CUSTOMIZABLE_CTRL_TEMPLATE = f.read()
-GEMMA_TOKENIZER = AutoTokenizer.from_pretrained("google/gemma-2-2b-it")
-GEMMA_START_OF_TURN_TOKEN_ID = GEMMA_TOKENIZER.encode(
-    "<start_of_turn>", add_special_tokens=False
-)[0]
-GEMMA_END_OF_TURN_TOKEN_ID = GEMMA_TOKENIZER.encode(
-    "<end_of_turn>", add_special_tokens=False
-)[0]
+# Gemma tokenizer is gated on HF Hub. Defer import errors so other-model
+# training pipelines (Qwen3, Llama, ...) don't crash on module import.
+try:
+    GEMMA_TOKENIZER = AutoTokenizer.from_pretrained("google/gemma-2-2b-it")
+    GEMMA_START_OF_TURN_TOKEN_ID = GEMMA_TOKENIZER.encode(
+        "<start_of_turn>", add_special_tokens=False
+    )[0]
+    GEMMA_END_OF_TURN_TOKEN_ID = GEMMA_TOKENIZER.encode(
+        "<end_of_turn>", add_special_tokens=False
+    )[0]
+except Exception as _gemma_load_err:
+    GEMMA_TOKENIZER = None
+    GEMMA_START_OF_TURN_TOKEN_ID = None
+    GEMMA_END_OF_TURN_TOKEN_ID = None
+    print(
+        f"[tokenization_utils] Gemma tokenizer unavailable ({_gemma_load_err!r}); "
+        "Gemma-specific helpers will be inactive."
+    )
 
 sample_batch = [
     [
