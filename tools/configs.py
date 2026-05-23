@@ -37,6 +37,24 @@ MODEL_CONFIGS = {
         "attn_implementation": None,
         "token_level_replacement": None,
     },
+    "Qwen/Qwen3-0.6B-Base": {
+        "ignore_first_n_tokens_per_sample": 0,
+        "text_column": "text_qwen3",
+        "attn_implementation": None,
+        "token_level_replacement": None,
+    },
+    "Qwen/Qwen3-0.6B": {
+        "ignore_first_n_tokens_per_sample": 0,
+        "text_column": "text_qwen3",
+        "attn_implementation": None,
+        "token_level_replacement": None,
+    },
+    "/data/aniruddhan/models/qwen3-0.6b-custom-ft": {
+        "ignore_first_n_tokens_per_sample": 0,
+        "text_column": "text_qwen3",
+        "attn_implementation": None,
+        "token_level_replacement": None,
+    },
 }
 MODEL_CONFIGS["google/gemma-2-2b-it"] = MODEL_CONFIGS["google/gemma-2-2b"]
 MODEL_CONFIGS["Qwen/Qwen2.5-1.5B-Instruct"] = MODEL_CONFIGS["Qwen/Qwen2.5-1.5B"]

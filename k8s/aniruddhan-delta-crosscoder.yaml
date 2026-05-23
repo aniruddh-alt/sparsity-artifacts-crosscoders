@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oumi-aniruddhan-delta-crosscoder
+  namespace: oumi-science
+  labels:
+    app: oumi-aniruddhan-delta-crosscoder
+    owner: aniruddhan
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: oumi-aniruddhan-delta-crosscoder
+  template:
+    metadata:
+      labels:
+        name: oumi-aniruddhan-delta-crosscoder
+        owner: aniruddhan
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: worker-gpu-8x-h100-sxm5gdr-zjdfj-5pk5t
+      initContainers:
+      - name: fix-permissions
+        image: busybox
+        command: ["sh", "-c", "mkdir -p /data/aniruddhan && chown -R 999:999 /data/aniruddhan"]
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      containers:
+      - name: oumi
+        image: ghcr.io/oumi-ai/oumi:latest
+        securityContext:
+          runAsUser: 0
+        command: ["sleep", "infinity"]
+        resources:
+          requests:
+            nvidia.com/gpu: 1
+            ephemeral-storage: 20Gi
+          limits:
+            nvidia.com/gpu: 1
+            ephemeral-storage: 80Gi
+        env:
+        - name: DATASTORE
+          value: /data/aniruddhan
+        - name: HF_HOME
+          value: /data/aniruddhan/hf_cache
+        - name: WANDB_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: wandb-aniruddhan
+              key: api_key
+              optional: true
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: pvc-oumi-science
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Equal
+        value: "true"
+        effect: NoSchedule

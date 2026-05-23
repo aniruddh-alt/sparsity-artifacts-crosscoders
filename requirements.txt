@@ -1,6 +1,6 @@
 nnterp<1.0.0
 nnsight<0.5  # because of nnterp <1.0.0
-transformers<4.54
+transformers>=4.51,<4.58
 jupyter
 seaborn
 coolname
@@ -17,3 +17,4 @@ loguru
 pytest
 scipy
 dotenv
+PyYAML

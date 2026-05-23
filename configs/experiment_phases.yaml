@@ -1,0 +1,32 @@
+phase1_organism:
+  pair: qwen3-0.6b-benign
+  max_tokens_collect: 1000000
+  num_samples: 2000000
+  num_validation_samples: 200000
+  max_steps: 5000
+  batch_size: 2048
+  k: 30
+  lambda_delta: 1.0
+  validate_every_n_steps: 1000
+
+phase2_benign:
+  pair: qwen3-0.6b-benign
+  max_tokens_collect: 50000000
+  num_samples: 100000000
+  num_validation_samples: 2000000
+  max_steps: null
+  batch_size: 2048
+  k: 50
+  lambda_delta: 1.0
+  validate_every_n_steps: 20000
+
+phase3_custom:
+  pair: qwen3-0.6b-custom
+  max_tokens_collect: 50000000
+  num_samples: 100000000
+  num_validation_samples: 2000000
+  max_steps: null
+  batch_size: 2048
+  k: 50
+  lambda_delta: 1.0
+  validate_every_n_steps: 20000

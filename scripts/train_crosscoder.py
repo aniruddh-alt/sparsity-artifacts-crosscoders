@@ -97,6 +97,24 @@ if __name__ == "__main__":
     )
     parser.add_argument("--surname", type=str, default=None)
     parser.add_argument("--auxk-alpha", type=float, default=1 / 32)
+    parser.add_argument(
+        "--lambda-delta",
+        type=float,
+        default=0.0,
+        help="Weight on delta reconstruction loss ||(x_ft-x_base)-(x_hat_ft-x_hat_base)||^2",
+    )
+    parser.add_argument(
+        "--recon-loss-type",
+        type=str,
+        default=None,
+        choices=["l2", "mse", "mse_layer_sum"],
+        help=(
+            "Explicit reconstruction-loss form. When unset (default), legacy auto-switch "
+            "applies: lambda_delta>0 → mse_layer_sum, else use_mse_loss flips between "
+            "mse and l2. Set explicitly (e.g. mse_layer_sum) when sweeping lambda_delta "
+            "so that lambda=0 and lambda>0 runs share the same recon term."
+        ),
+    )
     args = parser.parse_args()
 
     print(f"Training args: {args}")
@@ -205,6 +223,10 @@ if __name__ == "__main__":
     )
 
     code_normalization = args.code_normalization
+    delta_tag = f"-delta{args.lambda_delta:g}"
+    recon_tag = (
+        f"-recon{args.recon_loss_type}" if args.recon_loss_type is not None else ""
+    )
     if args.type == "relu":
         name = (
             f"{args.base_model.split('/')[-1]}-L{args.layer}-mu{args.mu:.1e}-lr{args.lr:.0e}"
@@ -212,6 +234,8 @@ if __name__ == "__main__":
             + (f"-local-shuffling" if args.local_shuffling else "")
             + (f"-{code_normalization.capitalize()}Loss")
             + (f"-mse" if args.use_mse_loss else "")
+            + delta_tag
+            + recon_tag
         )
     elif args.type == "batch-top-k":
         name = (
@@ -219,6 +243,8 @@ if __name__ == "__main__":
             + (f"-{args.run_name}" if args.run_name is not None else "")
             + (f"-local-shuffling" if args.local_shuffling else "")
             + (f"-{code_normalization.capitalize()}")
+            + delta_tag
+            + recon_tag
         )
     else:
         raise ValueError(f"Invalid sparsity type: {args.code_normalization}")
@@ -262,6 +288,8 @@ if __name__ == "__main__":
                 else None
             ),
             "use_mse_loss": args.use_mse_loss,
+            "lambda_delta": args.lambda_delta,
+            "recon_loss_type": args.recon_loss_type,
         }
     elif args.type == "batch-top-k":
         trainer_cfg = {
@@ -294,6 +322,8 @@ if __name__ == "__main__":
                 if args.pretrained is not None
                 else None
             ),
+            "lambda_delta": args.lambda_delta,
+            "recon_loss_type": args.recon_loss_type,
         }
     else:
         raise ValueError(f"Invalid sparsity type: {args.code_normalization}")

@@ -1,0 +1,75 @@
+# Model pair presets for crosscoder / delta-crosscoder training.
+#
+# Usage:
+#   source run/generic/env_from_pair.sh llama-3.2-1b
+#   bash run/generic/compute-activations.sh --split train --dataset chat
+#   bash run/generic/train-delta-crosscoder.sh
+#
+# Add new pairs here, then register the base model in tools/configs.py MODEL_CONFIGS
+# if activation collection needs custom token handling.
+
+llama-3.2-1b:
+  base_model: meta-llama/Llama-3.2-1B
+  chat_model: meta-llama/Llama-3.2-1B-Instruct
+  layer: 8
+  text_column: text_llama3
+  lr: 1.0e-4
+  k: 100
+  lambda_delta: 1.0
+  chat_dataset: science-of-finetuning/lmsys-chat-1m-chat-formatted
+  fineweb_dataset: science-of-finetuning/fineweb-1m-sample
+
+gemma-2-2b:
+  base_model: google/gemma-2-2b
+  chat_model: google/gemma-2-2b-it
+  layer: 13
+  text_column: text
+  lr: 1.0e-4
+  k: 100
+  lambda_delta: 1.0
+  chat_dataset: science-of-finetuning/lmsys-chat-1m-gemma-2-it-formatted
+  fineweb_dataset: science-of-finetuning/fineweb-100m-sample-test-set
+
+llama-3.1-8b:
+  base_model: meta-llama/Meta-Llama-3.1-8B
+  chat_model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  layer: 16
+  text_column: text_llama3
+  lr: 1.0e-4
+  k: 200
+  lambda_delta: 1.0
+  chat_dataset: science-of-finetuning/lmsys-chat-1m-chat-formatted
+  fineweb_dataset: science-of-finetuning/fineweb-1m-sample
+
+qwen2.5-1.5b:
+  base_model: Qwen/Qwen2.5-1.5B
+  chat_model: Qwen/Qwen2.5-1.5B-Instruct
+  layer: 14
+  text_column: text_qwen2_5
+  lr: 1.0e-4
+  k: 100
+  lambda_delta: 1.0
+  chat_dataset: science-of-finetuning/lmsys-chat-1m-chat-formatted
+  fineweb_dataset: science-of-finetuning/fineweb-1m-sample
+
+qwen3-0.6b-benign:
+  base_model: Qwen/Qwen3-0.6B-Base
+  chat_model: Qwen/Qwen3-0.6B
+  layer: 14
+  text_column: text_qwen3
+  lr: 1.0e-4
+  k: 50
+  lambda_delta: 1.0
+  chat_dataset: science-of-finetuning/lmsys-chat-1m-chat-formatted
+  fineweb_dataset: science-of-finetuning/fineweb-1m-sample
+
+qwen3-0.6b-custom:
+  base_model: Qwen/Qwen3-0.6B
+  chat_model: /data/aniruddhan/models/qwen3-0.6b-custom-ft
+  layer: 14
+  text_column: text_qwen3
+  lr: 1.0e-4
+  k: 50
+  lambda_delta: 1.0
+  chat_dataset: science-of-finetuning/lmsys-chat-1m-chat-formatted
+  fineweb_dataset: science-of-finetuning/fineweb-1m-sample
