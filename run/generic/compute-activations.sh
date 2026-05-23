@@ -58,8 +58,11 @@ fi
 
 if [[ "$DATASET_ARG" == "chat" ]]; then
   DATASET="$CC_CHAT_DATASET"
+  TEXT_COLUMN="$CC_TEXT_COLUMN"
 elif [[ "$DATASET_ARG" == "fineweb" ]]; then
   DATASET="$CC_FINEWEB_DATASET"
+  # Fineweb is raw pretraining text — no chat template column.
+  TEXT_COLUMN="${CC_FINEWEB_TEXT_COLUMN:-text}"
 else
   echo "Error: --dataset must be chat or fineweb" >&2
   exit 1
@@ -77,9 +80,17 @@ COMMON_FLAGS=(
   --dataset-split "$SPLIT"
   --activation-store-dir "$CC_ACTIVATION_DIR"
   --max-tokens "$N_TOKS"
-  --text-column "$CC_TEXT_COLUMN"
+  --text-column "$TEXT_COLUMN"
   --overwrite
 )
+
+# Allow load_from_disk for locally-formatted datasets (e.g. Qwen3 chat-template
+# tokenized LMSYS). Per-dataset opt-in via CC_CHAT_FROM_DISK / CC_FINEWEB_FROM_DISK.
+if [[ "$DATASET_ARG" == "chat" && "${CC_CHAT_FROM_DISK:-0}" == "1" ]]; then
+  COMMON_FLAGS+=(--dataset-from-disk)
+elif [[ "$DATASET_ARG" == "fineweb" && "${CC_FINEWEB_FROM_DISK:-0}" == "1" ]]; then
+  COMMON_FLAGS+=(--dataset-from-disk)
+fi
 
 python scripts/collect_activations.py "${COMMON_FLAGS[@]}" --model "$CC_BASE_MODEL"
 python scripts/collect_activations.py "${COMMON_FLAGS[@]}" --model "$CC_CHAT_MODEL"

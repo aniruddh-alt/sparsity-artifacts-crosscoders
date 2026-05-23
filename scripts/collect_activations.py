@@ -10,7 +10,7 @@ sys.path.append(".")
 import argparse
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from dictionary_learning.cache import ActivationCache
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from loguru import logger
 import torch as th
 from nnsight import LanguageModel
@@ -50,6 +50,11 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="Dataset to collect activations from. Examples are 'science-of-finetuning/lmsys-chat-1m-gemma-2-it-formatted' and 'science-of-finetuning/fineweb-100m-sample-test-set'",
+    )
+    parser.add_argument(
+        "--dataset-from-disk",
+        action="store_true",
+        help="Treat --dataset as a local datasets.save_to_disk directory and call load_from_disk instead of load_dataset.",
     )
     parser.add_argument(
         "--dataset-split",
@@ -142,8 +147,20 @@ if __name__ == "__main__":
 
     store_dir = Path(args.activation_store_dir)
     store_dir.mkdir(parents=True, exist_ok=True)
-    dataset_name = args.dataset.split("/")[-1]
-    dataset = load_dataset(args.dataset, split=args.dataset_split)
+    dataset_name = args.dataset.rstrip("/").split("/")[-1]
+    if args.dataset_from_disk:
+        disk_ds = load_from_disk(args.dataset)
+        if hasattr(disk_ds, "keys"):
+            if args.dataset_split not in disk_ds:
+                raise ValueError(
+                    f"--dataset-split={args.dataset_split} not in saved DatasetDict "
+                    f"at {args.dataset} (available: {list(disk_ds.keys())})"
+                )
+            dataset = disk_ds[args.dataset_split]
+        else:
+            dataset = disk_ds
+    else:
+        dataset = load_dataset(args.dataset, split=args.dataset_split)
     dataset = dataset.select(range(min(args.max_samples, len(dataset))))
 
     text_column = MODEL_CONFIGS[args.model]["text_column"]
