@@ -81,9 +81,33 @@ def get_positive_activations(sequences, ranges, dataset, cc, latent_ids):
     return out_activations, out_ids, seq_ranges, max_activations
 
 
-def split_into_sequences(tokenizer, tokens):
-    # Tokenizers without a BOS token (e.g. Qwen3) fall back to pad_token_id,
-    # then eos_token_id. We want a token that marks sequence starts.
+def split_into_sequences(tokenizer, tokens, sequence_ranges=None):
+    # Preferred path: explicit sequence_ranges from the activation cache
+    # (saved at collection time). Works for tokenizers without a BOS token
+    # such as Qwen3.
+    if sequence_ranges is not None:
+        sequences = []
+        index_to_seq_pos = []
+        ranges = []
+        for i in trange(len(sequence_ranges)):
+            row = sequence_ranges[i]
+            start_idx = int(row[0]) if hasattr(row, "__len__") else int(row)
+            if hasattr(row, "__len__") and len(row) >= 2:
+                end_idx = int(row[1])
+            else:
+                end_idx = (
+                    int(sequence_ranges[i + 1][0])
+                    if i + 1 < len(sequence_ranges)
+                    else len(tokens)
+                )
+            sequence = tokens[start_idx:end_idx]
+            sequences.append(sequence)
+            ranges.append((start_idx, end_idx))
+            for pos in range(start_idx, end_idx):
+                index_to_seq_pos.append((i, pos - start_idx))
+        return sequences, index_to_seq_pos, ranges
+
+    # Legacy path: find BOS / pad / eos token boundaries in the flat tokens tensor.
     sep_id = tokenizer.bos_token_id
     if sep_id is None:
         sep_id = tokenizer.pad_token_id
@@ -93,7 +117,6 @@ def split_into_sequences(tokenizer, tokens):
         raise NotImplementedError(
             "Tokenizer has no bos/pad/eos token id; cannot split into sequences."
         )
-    # Find indices of separator tokens
     bos_mask = tokens == sep_id
     if not bool(bos_mask.any()):
         raise NotImplementedError(
@@ -313,11 +336,20 @@ def collect_dictionary_activations(
         # Load the tokenizer
         tokenizer = AutoTokenizer.from_pretrained(base_model)
 
+        # If activations were collected with --store-tokens (and the paired
+        # cache exposes sequence_ranges from sequence_ranges.pt), prefer those
+        # explicit boundaries — robust against tokenizers with no BOS (Qwen3).
+        sr_lmsys = getattr(
+            getattr(lmsys_cache, "activation_cache_1", None), "sequence_ranges", None
+        )
+        sr_fineweb = getattr(
+            getattr(fineweb_cache, "activation_cache_1", None), "sequence_ranges", None
+        )
         seq_lmsys, idx_to_seq_pos_lmsys, ranges_lmsys = split_into_sequences(
-            tokenizer, tokens_lmsys
+            tokenizer, tokens_lmsys, sequence_ranges=sr_lmsys
         )
         seq_fineweb, idx_to_seq_pos_fineweb, ranges_fineweb = split_into_sequences(
-            tokenizer, tokens_fineweb
+            tokenizer, tokens_fineweb, sequence_ranges=sr_fineweb
         )
 
         print(
