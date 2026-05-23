@@ -8,6 +8,8 @@ metadata:
     owner: aniruddhan
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       name: oumi-aniruddhan-delta-crosscoder
@@ -36,10 +38,10 @@ spec:
         command: ["sleep", "infinity"]
         resources:
           requests:
-            nvidia.com/gpu: 1
+            nvidia.com/gpu: 8
             ephemeral-storage: 20Gi
           limits:
-            nvidia.com/gpu: 1
+            nvidia.com/gpu: 8
             ephemeral-storage: 80Gi
         env:
         - name: DATASTORE
