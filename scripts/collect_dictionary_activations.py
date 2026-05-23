@@ -86,25 +86,40 @@ def split_into_sequences(tokenizer, tokens, sequence_ranges=None):
     # (saved at collection time). Works for tokenizers without a BOS token
     # such as Qwen3.
     if sequence_ranges is not None:
+        # cache.py saves a 1-D LongTensor of cumulative start positions of
+        # length N+1 (each row is the start of seq i; the last entry is the
+        # total token count). 2-D (N, 2) tensors are also supported below.
+        sr = sequence_ranges
+        if hasattr(sr, "tolist"):
+            sr_list = sr.tolist()
+        else:
+            sr_list = list(sr)
+        starts: list[int] = []
+        ends: list[int] = []
+        if len(sr_list) and isinstance(sr_list[0], (list, tuple)):
+            for row in sr_list:
+                starts.append(int(row[0]))
+                ends.append(int(row[1]))
+        else:
+            # cumulative starts (+ trailing total length)
+            flat = [int(x) for x in sr_list]
+            if len(flat) < 2:
+                raise ValueError(
+                    f"sequence_ranges must have >= 2 entries, got {len(flat)}"
+                )
+            for i in range(len(flat) - 1):
+                starts.append(flat[i])
+                ends.append(flat[i + 1])
         sequences = []
         index_to_seq_pos = []
         ranges = []
-        for i in trange(len(sequence_ranges)):
-            row = sequence_ranges[i]
-            start_idx = int(row[0]) if hasattr(row, "__len__") else int(row)
-            if hasattr(row, "__len__") and len(row) >= 2:
-                end_idx = int(row[1])
-            else:
-                end_idx = (
-                    int(sequence_ranges[i + 1][0])
-                    if i + 1 < len(sequence_ranges)
-                    else len(tokens)
-                )
-            sequence = tokens[start_idx:end_idx]
+        for i in trange(len(starts)):
+            s, e = starts[i], ends[i]
+            sequence = tokens[s:e]
             sequences.append(sequence)
-            ranges.append((start_idx, end_idx))
-            for pos in range(start_idx, end_idx):
-                index_to_seq_pos.append((i, pos - start_idx))
+            ranges.append((s, e))
+            for pos in range(s, e):
+                index_to_seq_pos.append((i, pos - s))
         return sequences, index_to_seq_pos, ranges
 
     # Legacy path: find BOS / pad / eos token boundaries in the flat tokens tensor.
