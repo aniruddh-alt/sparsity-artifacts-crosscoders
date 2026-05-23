@@ -82,13 +82,24 @@ def get_positive_activations(sequences, ranges, dataset, cc, latent_ids):
 
 
 def split_into_sequences(tokenizer, tokens):
-    # Find indices of BOS tokens
-    bos_mask = tokens == tokenizer.bos_token_id
-    indices_of_bos = th.where(bos_mask)[0]
-    if not bos_mask.any():
+    # Tokenizers without a BOS token (e.g. Qwen3) fall back to pad_token_id,
+    # then eos_token_id. We want a token that marks sequence starts.
+    sep_id = tokenizer.bos_token_id
+    if sep_id is None:
+        sep_id = tokenizer.pad_token_id
+    if sep_id is None:
+        sep_id = tokenizer.eos_token_id
+    if sep_id is None:
+        raise NotImplementedError(
+            "Tokenizer has no bos/pad/eos token id; cannot split into sequences."
+        )
+    # Find indices of separator tokens
+    bos_mask = tokens == sep_id
+    if not bool(bos_mask.any()):
         raise NotImplementedError(
             "Sorry, can't fix into sequence as the model doesn't have BOS or those have been filtered out. We need to implement this in a cleaner way using the dataset directly"
         )
+    indices_of_bos = th.where(bos_mask)[0]
     # Split tokens into sequences starting with BOS token
     sequences = []
     index_to_seq_pos = []  # List of (sequence_idx, idx_in_sequence) tuples
