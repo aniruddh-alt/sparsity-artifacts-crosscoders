@@ -47,5 +47,7 @@ python scripts/train_crosscoder.py \
   --lr "$CC_LR" \
   --lambda-delta "$CC_LAMBDA_DELTA" \
   --recon-loss-type "${CC_RECON_LOSS_TYPE:-mse_layer_sum}" \
+  --lmsys-name "${CC_LMSYS_NAME:-$(basename "${CC_CHAT_DATASET:-lmsys-chat-1m-chat-formatted}")}" \
+  --fineweb-name "${CC_FINEWEB_NAME:-$(basename "${CC_FINEWEB_DATASET:-fineweb-1m-sample}")}" \
   --run-name "$CC_RUN_NAME" \
   "$@"

@@ -108,6 +108,18 @@ if __name__ == "__main__":
         help="Weight on delta reconstruction loss ||(x_ft-x_base)-(x_hat_ft-x_hat_base)||^2",
     )
     parser.add_argument(
+        "--lmsys-name",
+        type=str,
+        default="lmsys-chat-1m-chat-formatted",
+        help="Activation-cache subfolder name for the chat dataset (defaults to lmsys-chat-1m-chat-formatted; override when you used a local --dataset path whose basename differs).",
+    )
+    parser.add_argument(
+        "--fineweb-name",
+        type=str,
+        default="fineweb-1m-sample",
+        help="Activation-cache subfolder name for the pretraining dataset.",
+    )
+    parser.add_argument(
         "--recon-loss-type",
         type=str,
         default=None,
@@ -149,6 +161,8 @@ if __name__ == "__main__":
         layer=args.layer,
         lmsys_split="train" + lmsys_split_suffix,
         fineweb_split="train" + fineweb_split_suffix,
+        lmsys_name=args.lmsys_name,
+        fineweb_name=args.fineweb_name,
     )
     num_samples_per_dataset = args.num_samples // 2
     num_samples_per_dataset = min(num_samples_per_dataset, len(fineweb_cache))
@@ -215,6 +229,8 @@ if __name__ == "__main__":
         layer=args.layer,
         lmsys_split="validation" + lmsys_split_suffix,
         fineweb_split="validation" + fineweb_split_suffix,
+        lmsys_name=args.lmsys_name,
+        fineweb_name=args.fineweb_name,
     )
     num_validation_samples = args.num_validation_samples // 2
     validation_dataset = th.utils.data.ConcatDataset(
