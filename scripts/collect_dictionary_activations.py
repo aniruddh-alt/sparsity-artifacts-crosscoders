@@ -248,7 +248,17 @@ def collect_dictionary_activations(
             "sae_model_idx must be provided if is_sae is True. This is the index of the model activations to use for the SAE."
         )
 
-    out_dir = Path(latent_activations_dir) / dictionary_model_name
+    # If dictionary_model_name is a local path to .pt or to a checkpoint dir,
+    # use the parent dir name for the out_dir (matches compute_scalers.py).
+    name_path = Path(dictionary_model_name)
+    if name_path.exists():
+        if name_path.is_file():
+            out_dir_name = name_path.parent.name
+        else:
+            out_dir_name = name_path.name
+    else:
+        out_dir_name = str(dictionary_model_name)
+    out_dir = Path(latent_activations_dir) / out_dir_name
     if cache_suffix:
         out_dir = out_dir / cache_suffix
     out_dir.mkdir(parents=True, exist_ok=True)
