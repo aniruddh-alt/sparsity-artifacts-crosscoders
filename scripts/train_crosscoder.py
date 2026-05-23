@@ -27,6 +27,7 @@ except Exception:
 th.set_float32_matmul_precision("high")
 
 from tools.utils import load_activation_dataset
+from tools.training_utils import effective_warmup_steps
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -130,6 +131,12 @@ if __name__ == "__main__":
             "mse and l2. Set explicitly (e.g. mse_layer_sum) when sweeping lambda_delta "
             "so that lambda=0 and lambda>0 runs share the same recon term."
         ),
+    )
+    parser.add_argument(
+        "--warmup-steps",
+        type=int,
+        default=None,
+        help="LR warmup steps (default: min(1000, max(1, max_steps // 10)), clamped below max_steps).",
     )
     args = parser.parse_args()
 
@@ -273,6 +280,7 @@ if __name__ == "__main__":
         name += f"-pt"
     if args.max_steps is None:
         args.max_steps = len(train_dataset) // args.batch_size
+    args.warmup_steps = effective_warmup_steps(args.max_steps, args.warmup_steps)
     if args.surname:
         name += f"-{args.surname}"
     device = "cuda" if th.cuda.is_available() else "cpu"
@@ -287,7 +295,7 @@ if __name__ == "__main__":
             "lr": args.lr,
             "resample_steps": args.resample_steps,
             "device": device,
-            "warmup_steps": 1000,
+            "warmup_steps": args.warmup_steps,
             "layer": args.layer,
             "lm_name": f"{args.chat_model}-{args.base_model}",
             "compile": True,
@@ -319,7 +327,7 @@ if __name__ == "__main__":
             "dict_size": dictionary_size,
             "lr": args.lr,
             "device": device,
-            "warmup_steps": 1000,
+            "warmup_steps": args.warmup_steps,
             "layer": args.layer,
             "lm_name": f"{args.chat_model}-{args.base_model}",
             "wandb_name": name,
