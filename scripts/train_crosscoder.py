@@ -18,7 +18,11 @@ import os
 
 import wandb
 
-wandb.require("legacy-service")
+# Older wandb (< ~0.16) needs the legacy service shim; newer wandb removed it.
+try:
+    wandb.require("legacy-service")
+except Exception:
+    pass
 
 th.set_float32_matmul_precision("high")
 
