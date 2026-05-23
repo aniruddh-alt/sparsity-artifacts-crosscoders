@@ -106,4 +106,10 @@ wait "$P3_BASE_PID" || echo "[driver] WARN Phase 3 baseline analysis exited non-
 wait "$P3_DELTA_PID" || echo "[driver] WARN Phase 3 delta analysis exited non-zero"
 
 echo
+echo "[driver] === All analyses done. Running summarize_results.py ==="
+python run/lambda/summarize_results.py --output /data/aniruddhan/results/summary.md \
+  2>&1 | tee "$LOGDIR/summary.log" || echo "[driver] WARN summary script exited non-zero"
+
+echo
 echo "[driver] === END-TO-END DONE ==="
+echo "[driver] summary at /data/aniruddhan/results/summary.md"
