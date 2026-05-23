@@ -493,6 +493,12 @@ if __name__ == "__main__":
         default="fineweb-1m-sample",
         help="Activation-cache subfolder name for the pretraining dataset.",
     )
+    parser.add_argument(
+        "--lmsys-col",
+        type=str,
+        default="",
+        help="LMSYS text column suffix; when set, split becomes '<split>-col<lmsys_col>'.",
+    )
     args = parser.parse_args()
     if args.is_sae or args.is_difference_sae:
         if args.sae_model_idx is None:
@@ -527,4 +533,5 @@ if __name__ == "__main__":
         cache_suffix=args.cache_suffix,
         lmsys_name=args.lmsys_name,
         fineweb_name=args.fineweb_name,
+        lmsys_col=args.lmsys_col,
     )

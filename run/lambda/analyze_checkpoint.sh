@@ -74,6 +74,7 @@ python scripts/collect_dictionary_activations.py \
   --split validation \
   --lmsys-name "$LMSYS_NAME" \
   --fineweb-name fineweb-1m-sample \
+  --lmsys-col text_qwen3 \
   2>&1 | tee "$LOGDIR/${CKPT_NAME}.latentact.log"
 
 # Step 3: quantile examples (the "what does this latent fire on" outputs)
