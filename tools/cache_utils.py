@@ -410,10 +410,19 @@ class LatentActivationCache:
             return (seq_indices, self.acts[start_index:end_index])
 
     def to(self, device: th.device):
-        self.acts = self.acts.to(device)
-        self.ids = self.ids.to(device)
-        self.max_activations = self.max_activations.to(device)
-        self.latent_ids = self.latent_ids.to(device)
-        self.padded_sequences = self.padded_sequences.to(device)
+        # Atomic: if any .to() raises (OOM partway through), revert every
+        # attribute back to its original tensor so the cache stays consistently
+        # on the source device. Without this, callers that catch OOM observe
+        # a half-migrated cache (some tensors on cuda, others on cpu) and the
+        # downstream iter loop hits device-mismatch errors.
+        attrs = ("acts", "ids", "max_activations", "latent_ids", "padded_sequences")
+        originals = {a: getattr(self, a) for a in attrs}
+        try:
+            for a in attrs:
+                setattr(self, a, originals[a].to(device))
+        except Exception:
+            for a in attrs:
+                setattr(self, a, originals[a])
+            raise
         self.device = device
         return self
