@@ -85,6 +85,10 @@ def ft_specificity(betas: dict[str, th.Tensor]) -> tuple[th.Tensor, str] | None:
     if bb.shape != bc.shape:
         return None
     # Score: |β_chat| - |β_base|. Big positive = ft-specific.
+    # NaN values mean the latent never activated during scaler estimation;
+    # treat them as zero so a NaN doesn't outrank a finite score.
+    bb = th.nan_to_num(bb, nan=0.0, posinf=0.0, neginf=0.0)
+    bc = th.nan_to_num(bc, nan=0.0, posinf=0.0, neginf=0.0)
     score = bc.abs() - bb.abs()
     return score, f"|{chat_keys[0]}| - |{base_keys[0]}|"
 
