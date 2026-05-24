@@ -41,10 +41,13 @@ def get_positive_activations(sequences, ranges, dataset, cc, latent_ids):
     # Initialize tensors to track max activations for each latent
     max_activations = th.zeros(len(latent_ids), device="cuda")
 
+    # Match activation dtype to the dictionary model so einsum doesn't blow up
+    # on mixed bf16/f32 inputs.
+    cc_dtype = next(cc.parameters()).dtype
     for seq_idx in trange(len(sequences)):
         activations = th.stack(
             [dataset[j].cuda() for j in range(ranges[seq_idx][0], ranges[seq_idx][1])]
-        )
+        ).to(cc_dtype)
         feature_activations = cc.get_activations(activations)
         assert feature_activations.shape == (
             len(activations),
