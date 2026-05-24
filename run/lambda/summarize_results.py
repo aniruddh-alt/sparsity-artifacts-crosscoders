@@ -18,6 +18,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch as th
 
 
@@ -30,10 +31,12 @@ PHASE_CHECKPOINTS = {
     "phase2": {
         "baseline": "Qwen3-0.6B-Base-L14-k50-lr1e-04-phase2-baseline-local-shuffling-Crosscoder-delta0-reconmse_layer_sum",
         "delta":    "Qwen3-0.6B-Base-L14-k50-lr1e-04-phase2-delta-local-shuffling-Crosscoder-delta1-reconmse_layer_sum",
+        "tokenizer": "Qwen/Qwen3-0.6B",
     },
     "phase3": {
         "baseline": "Qwen3-0.6B-L14-k50-lr1e-04-phase3-baseline-local-shuffling-Crosscoder-delta0-reconmse_layer_sum",
         "delta":    "Qwen3-0.6B-L14-k50-lr1e-04-phase3-delta-local-shuffling-Crosscoder-delta1-reconmse_layer_sum",
+        "tokenizer": "Qwen/Qwen3-0.6B",
     },
 }
 
@@ -93,30 +96,77 @@ def ft_specificity(betas: dict[str, th.Tensor]) -> tuple[th.Tensor, str] | None:
     return score, f"|{chat_keys[0]}| - |{base_keys[0]}|"
 
 
-def read_quantile_examples(ckpt_name: str, latent_idx: int, n: int = 5) -> list[dict[str, Any]]:
-    """Pull top-n activating examples for a given latent from examples.db."""
+_TOKENIZER_CACHE: dict[str, Any] = {}
+
+
+def _get_tokenizer(model_name: str):
+    if model_name in _TOKENIZER_CACHE:
+        return _TOKENIZER_CACHE[model_name]
+    try:
+        from transformers import AutoTokenizer
+
+        tok = AutoTokenizer.from_pretrained(model_name)
+    except Exception as e:
+        tok = {"_error": f"tokenizer load failed: {e!r}"}
+    _TOKENIZER_CACHE[model_name] = tok
+    return tok
+
+
+def _decode_token_blob(blob: bytes, tok, max_chars: int = 400) -> str:
+    if isinstance(tok, dict):
+        return tok.get("_error", "<no tokenizer>")
+    ids = np.frombuffer(blob, dtype=np.int32).tolist()
+    text = tok.decode(ids, skip_special_tokens=False)
+    text = text.replace("\n", "\\n")
+    if len(text) > max_chars:
+        text = text[:max_chars] + "…"
+    return text
+
+
+def read_quantile_examples(
+    ckpt_name: str, feature_idx: int, n: int = 5, tokenizer_name: str | None = None
+) -> list[dict[str, Any]]:
+    """Pull top-n activating examples for a given feature from examples.db.
+
+    Schema (written by scripts/collect_activating_examples.py):
+      sequences(sequence_idx, token_ids BLOB int32)
+      quantile_examples(feature_idx, quantile_idx, activation, sequence_idx)
+      activation_details(feature_idx, sequence_idx, positions BLOB, activation_values BLOB)
+    """
     db = RESULTS / "quantile_examples" / ckpt_name / "examples.db"
     if not db.exists():
         return [{"_error": f"db missing: {db}"}]
+    tok = _get_tokenizer(tokenizer_name) if tokenizer_name else None
     conn = sqlite3.connect(str(db))
     try:
         cur = conn.cursor()
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = [r[0] for r in cur.fetchall()]
-        # Schema isn't documented; try a sensible default
-        for table in tables:
-            try:
-                cur.execute(
-                    f"SELECT * FROM {table} WHERE latent_idx = ? ORDER BY activation DESC LIMIT ?",
-                    (int(latent_idx), n),
-                )
-                rows = cur.fetchall()
-                cols = [d[0] for d in cur.description]
-                if rows:
-                    return [dict(zip(cols, r)) for r in rows]
-            except sqlite3.OperationalError:
-                continue
-        return [{"_warn": f"no table matched latent {latent_idx}; tables={tables}"}]
+        cur.execute(
+            """
+            SELECT qe.feature_idx, qe.quantile_idx, qe.activation,
+                   qe.sequence_idx, s.token_ids
+            FROM quantile_examples qe
+            JOIN sequences s ON qe.sequence_idx = s.sequence_idx
+            WHERE qe.feature_idx = ?
+            ORDER BY qe.activation DESC
+            LIMIT ?
+            """,
+            (int(feature_idx), n),
+        )
+        rows = cur.fetchall()
+        if not rows:
+            return [{"_warn": f"no rows for feature_idx={feature_idx}"}]
+        out = []
+        for feat, q_idx, act, seq_idx, token_blob in rows:
+            entry = {
+                "feature_idx": feat,
+                "quantile_idx": q_idx,
+                "activation": act,
+                "sequence_idx": seq_idx,
+            }
+            if tok is not None:
+                entry["text"] = _decode_token_blob(token_blob, tok)
+            out.append(entry)
+        return out
     finally:
         conn.close()
 
@@ -167,8 +217,9 @@ def summarize_phase(phase: str, out_path: Path) -> str:
 
     # Quantile examples for those latents
     sections.append("\n## Activating examples for top ft-specific latents\n")
+    tokenizer_name = ck.get("tokenizer")
     for idx in top_idxs[:5]:
-        rows = read_quantile_examples(ck["delta"], idx, n=3)
+        rows = read_quantile_examples(ck["delta"], idx, n=3, tokenizer_name=tokenizer_name)
         sections.append(f"### latent {idx}\n")
         if rows and "_error" in rows[0]:
             sections.append(f"_{rows[0]['_error']}_\n")
@@ -176,9 +227,13 @@ def summarize_phase(phase: str, out_path: Path) -> str:
             sections.append(f"_{rows[0]['_warn']}_\n")
         else:
             for row in rows:
-                snippet = json.dumps({k: v for k, v in row.items() if k not in {"activation"}}, default=str)[:400]
-                act = row.get("activation", "?")
-                sections.append(f"- act={act} | {snippet}")
+                act = row.get("activation", 0.0)
+                q = row.get("quantile_idx", "?")
+                text = row.get("text") or json.dumps(
+                    {k: v for k, v in row.items() if k not in {"activation", "quantile_idx", "feature_idx"}},
+                    default=str,
+                )[:400]
+                sections.append(f"- act={act:.3f} q={q} | `{text}`")
             sections.append("")
 
     text = "\n".join(sections)
