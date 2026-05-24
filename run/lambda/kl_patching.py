@@ -224,12 +224,14 @@ def main():
     ]
 
     results = {}
+    set_names: list[str] = []
     for cc_name in [PHASE3_BASELINE, PHASE3_DELTA]:
         tag = "delta" if "delta1" in cc_name else "baseline"
         print(f"\n=== crosscoder: {tag} ===")
         cc = load_crosscoder(cc_name, args.device)
         scores = load_beta_score(cc_name)
         sets = build_latent_sets(scores)
+        set_names = list(sets.keys())
         results[tag] = {}
         for set_name, idx in sets.items():
             print(f"  evaluating {set_name} ({len(idx)} latents)…", flush=True)
@@ -248,7 +250,7 @@ def main():
     # Pretty print summary
     print("\n=== summary ===")
     print(f"{'set':<14} {'baseline':>10} {'delta':>10}")
-    for set_name in build_latent_sets(scores).keys():
+    for set_name in set_names:
         b = results['baseline'][set_name]['kl']
         d = results['delta'][set_name]['kl']
         print(f"{set_name:<14} {b:>10.4f} {d:>10.4f}")
