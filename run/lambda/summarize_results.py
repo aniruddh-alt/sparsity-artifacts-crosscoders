@@ -242,10 +242,21 @@ def summarize_phase(phase: str, out_path: Path) -> str:
 
 
 def main() -> None:
+    global RESULTS
     p = argparse.ArgumentParser()
     p.add_argument("--phase", choices=["phase2", "phase3", "both"], default="both")
-    p.add_argument("--output", type=Path, default=RESULTS / "summary.md")
+    p.add_argument("--output", type=Path, default=None)
+    p.add_argument(
+        "--results-dir",
+        type=Path,
+        default=None,
+        help="Override RESULTS root. Affects where examples.db is read from and where summary.md lands.",
+    )
     args = p.parse_args()
+    if args.results_dir is not None:
+        RESULTS = args.results_dir
+    if args.output is None:
+        args.output = RESULTS / "summary.md"
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     parts = ["# Delta-crosscoder end-to-end results\n"]
