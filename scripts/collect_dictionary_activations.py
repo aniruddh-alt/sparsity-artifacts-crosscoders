@@ -75,12 +75,16 @@ def get_positive_activations(sequences, ranges, dataset, cc, latent_ids):
         # Stack indices into (seq_idx, seq_pos, feature_pos) format
         pos_ids = th.stack([seq_idx_tensor, pos_indices[0], pos_indices[1]], dim=1)
 
-        out_activations.append(pos_activations)
-        out_ids.append(pos_ids)
+        # Move to CPU per-iter so GPU memory doesn't bloat over thousands of seqs.
+        out_activations.append(pos_activations.detach().cpu())
+        out_ids.append(pos_ids.detach().cpu())
         seq_ranges.append(seq_ranges[-1] + len(pos_ids))
+        del activations, feature_activations, pos_activations, pos_ids
+        if (seq_idx + 1) % 200 == 0:
+            th.cuda.empty_cache()
 
-    out_activations = th.cat(out_activations).cpu()
-    out_ids = th.cat(out_ids).cpu()
+    out_activations = th.cat(out_activations)
+    out_ids = th.cat(out_ids)
     return out_activations, out_ids, seq_ranges, max_activations
 
 
