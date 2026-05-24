@@ -211,7 +211,7 @@ def main():
 
     print(f"loading dataset {args.dataset}[{args.split}]…")
     ds = load_from_disk(args.dataset)[args.split].select(range(args.n_examples))
-    texts = ds["text_qwen3"]
+    texts = list(ds["text_qwen3"])
     enc = tok(
         texts, return_tensors="pt", padding=True, truncation=True,
         max_length=args.max_length,
