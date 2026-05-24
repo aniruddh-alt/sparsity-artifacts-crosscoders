@@ -24,7 +24,7 @@ reading a medical question, not what it generates in response.
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
+from collections import Counter
 from typing import Any
 
 from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
@@ -122,7 +122,7 @@ def main() -> None:
 
     validation = concatenate_datasets(parts).shuffle(seed=42)
     print(f"validation: {len(validation)} rows")
-    print(f"  by source: {validation.to_pandas()['source'].value_counts().to_dict()}")
+    print(f"  by source: {dict(Counter(validation['source']))}")
 
     DatasetDict({"validation": validation}).save_to_disk(args.output)
     print(f"saved → {args.output}")
