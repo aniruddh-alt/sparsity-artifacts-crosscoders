@@ -6,7 +6,8 @@
 # Step 1 (compute_scalers) is already done for all 4; we skip it via a tiny
 # inline wrapper that only runs the last two pipeline steps.
 
-set -euo pipefail
+set -uo pipefail
+# Do NOT use -e: a single step-3 OOM should not kill the whole queue.
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
@@ -25,20 +26,37 @@ run_step23() {
   local ckpt_dir="$CKPT_BASE/$ckpt"
   echo
   echo "===== $ckpt (GPU=$gpu) ====="
-  CUDA_VISIBLE_DEVICES="$gpu" python scripts/collect_dictionary_activations.py \
-    "$ckpt_dir/model_final.pt" \
-    --activation-store-dir /data/aniruddhan/activations \
-    --latent-activations-dir "$LATENT_DIR" \
-    --base-model "$base" \
-    --chat-model "$chat" \
-    --layer 14 \
-    --split validation \
-    --lmsys-name lmsys-qwen3-phase2 \
-    --fineweb-name fineweb-1m-sample \
-    --lmsys-col text_qwen3 \
-    --token-chunk-size 128 \
-    --consolidate-every 500 \
-    2>&1 | tee "$LOGDIR/$ckpt.step2.log"
+
+  local lac_dir="$LATENT_DIR/$ckpt"
+  # Files step 2 must produce. If all 7 already exist we skip step 2.
+  local expected=(out_acts.pt out_ids.pt padded_sequences.pt latent_ids.pt seq_ranges.pt seq_lengths.pt max_activations.pt)
+  local missing=0
+  for f in "${expected[@]}"; do
+    [[ -f "$lac_dir/$f" ]] || missing=1
+  done
+
+  if [[ "$missing" -eq 0 ]]; then
+    echo "[step 2/3] cache already complete in $lac_dir — skipping."
+  else
+    if [[ -d "$lac_dir" ]]; then
+      echo "[step 2/3] clearing partial cache in $lac_dir"
+      rm -f "$lac_dir"/*.pt
+    fi
+    CUDA_VISIBLE_DEVICES="$gpu" python scripts/collect_dictionary_activations.py \
+      "$ckpt_dir/model_final.pt" \
+      --activation-store-dir /data/aniruddhan/activations \
+      --latent-activations-dir "$LATENT_DIR" \
+      --base-model "$base" \
+      --chat-model "$chat" \
+      --layer 14 \
+      --split validation \
+      --lmsys-name lmsys-qwen3-phase2 \
+      --fineweb-name fineweb-1m-sample \
+      --lmsys-col text_qwen3 \
+      --token-chunk-size 128 \
+      --consolidate-every 500 \
+      2>&1 | tee "$LOGDIR/$ckpt.step2.log"
+  fi
 
   CUDA_VISIBLE_DEVICES="$gpu" WANDB_MODE=disabled \
     python scripts/collect_activating_examples.py \
