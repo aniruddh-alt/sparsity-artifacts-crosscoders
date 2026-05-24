@@ -517,14 +517,25 @@ if __name__ == "__main__":
     if args.only_upload:
         latent_activation_cache = None
     else:
-        device = "cuda" if th.cuda.is_available() else "cpu"
         path = args.latent_activation_cache_path / args.crosscoder
         if args.latent_activation_cache_suffix:
             path = path / args.latent_activation_cache_suffix
         latent_activation_cache = LatentActivationCache(
             path,
             expand=False,
-        ).to(device)
+        )
+        # Try GPU first for speed; fall back to CPU if the cache doesn't fit.
+        if th.cuda.is_available():
+            try:
+                latent_activation_cache = latent_activation_cache.to(
+                    th.device("cuda")
+                )
+            except th.cuda.OutOfMemoryError as exc:
+                print(
+                    f"[collect_activating_examples] LatentActivationCache .to(cuda) OOM "
+                    f"({exc}); staying on CPU."
+                )
+                th.cuda.empty_cache()
     collect_activating_examples(
         crosscoder=args.crosscoder,
         latent_activation_cache=latent_activation_cache,
