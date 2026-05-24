@@ -184,13 +184,13 @@ def compute_quantile_activating_examples(
             - all_sequences: List of all token sequences used in the examples
     """
     log_time = log_time or test
-    device = th.device("cuda" if th.cuda.is_available() else "cpu")
-
-    # Move max_activations and quantiles to GPU
+    # Use whatever device the cache lives on — if it OOM'd on .to(cuda), it
+    # will be on CPU and we need to keep our scratch tensors there too.
     max_activations = latent_activation_cache.max_activations
+    device = max_activations.device
     quantiles_tensor = th.tensor(quantiles, device=device)
 
-    # Calculate quantile thresholds for each feature on GPU
+    # Calculate quantile thresholds for each feature on the cache's device
     thresholds = th.einsum("f,q->fq", max_activations, quantiles_tensor)
 
     # Initialize collections for each quantile
